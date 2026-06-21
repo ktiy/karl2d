@@ -68,7 +68,7 @@ GL_Shader_Constant :: struct {
 
 	// if type is Uniform, then this is the uniform loc
 	// if type is Block_Variable, then this is the block loc
-	loc: u32, 
+	loc: u32,
 
 	// if this is a block variable, then this is the offset to it
 	block_variable_offset: u32,
@@ -107,7 +107,7 @@ GL_Shader :: struct {
 
 	constant_buffers: []GL_Shader_Constant_Buffer,
 	constants: []GL_Shader_Constant,
-	texture_bindings: []GL_Texture_Binding, 
+	texture_bindings: []GL_Texture_Binding,
 }
 
 s: ^GL_State
@@ -224,7 +224,7 @@ gl_draw :: proc(
 			gl.BindBuffer(gl.UNIFORM_BUFFER, gpu_data)
 			src := cpu_data[cpu_loc.offset:cpu_loc.offset+cpu_loc.size]
 			gl.BufferData(gl.UNIFORM_BUFFER, len(src), raw_data(src), gl.DYNAMIC_DRAW)
-			gl.BindBufferBase(gl.UNIFORM_BUFFER, gpu_loc.loc, gpu_data)	
+			gl.BindBufferBase(gl.UNIFORM_BUFFER, gpu_loc.loc, gpu_data)
 
 		case .Uniform:
 			loc := i32(gpu_loc.loc)
@@ -314,10 +314,10 @@ gl_draw :: proc(
 
 			case: log.errorf("Unknown type: %x", gpu_loc.uniform_type)
 			}
-			
+
 		}
 	}
-	
+
 	gl.BindBuffer(gl.ARRAY_BUFFER, s.vertex_buffer_gpu)
 	gl.BufferData(gl.ARRAY_BUFFER, VERTEX_BUFFER_MAX, nil, gl.DYNAMIC_DRAW)
 	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(vertex_buffer), raw_data(vertex_buffer))
@@ -462,7 +462,7 @@ gl_texture_needs_vertical_flip :: proc(th: Texture_Handle) -> bool {
 gl_create_render_texture :: proc(width: int, height: int) -> (Texture_Handle, Render_Target_Handle) {
 	texture := create_texture(width, height, .RGBA_32_Float, nil)
 	texture.needs_vertical_flip = true
-	
+
 	framebuffer: u32
 	gl.GenFramebuffers(1, &framebuffer)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, framebuffer)
@@ -547,7 +547,7 @@ compile_shader_from_source :: proc(shader_data: []byte, shader_type: gl.Shader_T
 
 	result: i32
 	gl.GetShaderiv(shader_id, gl.COMPILE_STATUS, &result)
-		
+
 	if result != 1 {
 		info_len: i32
 		gl.GetShaderInfoLog(shader_id, i32(len(err_buf)), &info_len, raw_data(err_buf))
@@ -588,7 +588,7 @@ gl_load_shader :: proc(vs_source: []byte, fs_source: []byte, desc_allocator := f
 		log.error(err_msg)
 		return {}, {}
 	}
-	
+
 	fs_shader, fs_shader_ok := compile_shader_from_source(fs_source, gl.Shader_Type.FRAGMENT_SHADER, err[:], &err_msg)
 
 	if !fs_shader_ok {
@@ -619,7 +619,7 @@ gl_load_shader :: proc(vs_source: []byte, fs_source: []byte, desc_allocator := f
 			gl.GetActiveAttrib(program, u32(i), i32(len(attrib_name_buf)), &attrib_name_len, &attrib_size, &attrib_type, raw_data(attrib_name_buf[:]))
 
 			name_cstr := cstring(raw_data(attrib_name_buf[:attrib_name_len]))
-			
+
 			loc := gl.GetAttribLocation(program, name_cstr)
 
 			type: Shader_Input_Type
@@ -629,13 +629,13 @@ gl_load_shader :: proc(vs_source: []byte, fs_source: []byte, desc_allocator := f
 			case gl.FLOAT_VEC2: type = .Vec2
 			case gl.FLOAT_VEC3: type = .Vec3
 			case gl.FLOAT_VEC4: type = .Vec4
-			
+
 			/* Possible (gl.) types:
 
 				FLOAT, FLOAT_VEC2, FLOAT_VEC3, FLOAT_VEC4, FLOAT_MAT2,
 				FLOAT_MAT3, FLOAT_MAT4, FLOAT_MAT2x3, FLOAT_MAT2x4,
 				FLOAT_MAT3x2, FLOAT_MAT3x4, FLOAT_MAT4x2, FLOAT_MAT4x3,
-				INT, INT_VEC2, INT_VEC3, INT_VEC4, UNSIGNED_INT, 
+				INT, INT_VEC2, INT_VEC3, INT_VEC4, UNSIGNED_INT,
 				UNSIGNED_INT_VEC2, UNSIGNED_INT_VEC3, UNSIGNED_INT_VEC4,
 				DOUBLE, DOUBLE_VEC2, DOUBLE_VEC3, DOUBLE_VEC4, DOUBLE_MAT2,
 				DOUBLE_MAT3, DOUBLE_MAT4, DOUBLE_MAT2x3, DOUBLE_MAT2x4,
@@ -645,7 +645,7 @@ gl_load_shader :: proc(vs_source: []byte, fs_source: []byte, desc_allocator := f
 			}
 
 			name := strings.clone(string(attrib_name_buf[:attrib_name_len]), desc_allocator)
-			
+
 			format := len(layout_formats) > 0 ? layout_formats[loc] : get_shader_input_format(name, type)
 			desc.inputs[i] = {
 				name = name,
@@ -673,7 +673,7 @@ gl_load_shader :: proc(vs_source: []byte, fs_source: []byte, desc_allocator := f
 	for idx in 0..<len(desc.inputs) {
 		input := desc.inputs[idx]
 		format_size := pixel_format_size(input.format)
-		gl.EnableVertexAttribArray(u32(input.register))	
+		gl.EnableVertexAttribArray(u32(input.register))
 		format, num_components, norm := gl_describe_pixel_format(input.format)
 		gl.VertexAttribPointer(u32(input.register), num_components, format, norm ? gl.TRUE : gl.FALSE, i32(stride), uintptr(offset))
 		offset += format_size
@@ -695,7 +695,7 @@ gl_load_shader :: proc(vs_source: []byte, fs_source: []byte, desc_allocator := f
 			name_len: i32
 			array_len: i32
 			type: u32
-			
+
 			gl.GetActiveUniform(
 				program,
 				u32(cidx),
@@ -893,9 +893,9 @@ gl_translate_pixel_format :: proc(f: Pixel_Format) -> i32 {
 	case .R_8_UInt: return gl.R
 
 	case .Unknown: fallthrough
-	case: log.error("Unhandled pixel format %v", f) 
+	case: log.error("Unhandled pixel format %v", f)
 	}
-	
+
 	return 0
 }
 
@@ -911,8 +911,8 @@ gl_describe_pixel_format :: proc(f: Pixel_Format) -> (format: u32, num_component
 	case .RG_8_Norm: return gl.UNSIGNED_BYTE, 2, true
 	case .R_8_Norm: return gl.UNSIGNED_BYTE, 1, true
 	case .R_8_UInt: return gl.BYTE, 1, false
-	
-	case .Unknown: 
+
+	case .Unknown:
 	}
 
 	log.errorf("Unknown format %x", format)
@@ -941,4 +941,3 @@ gl_default_shader_fragment_source :: proc() -> []byte {
 	fragment_source := #load("default_shaders/default_shader_gl_fragment.glsl")
 	return fragment_source
 }
-

@@ -65,7 +65,7 @@ linux_gl_x11_glue_make_context :: proc(s: ^Linux_GL_X11_Glue_State, options: Ini
 	num_fbc: i32
 	screen := X.DefaultScreen(s.display)
 	fbc := glx.ChooseFBConfig(s.display, screen, raw_data(visual_attribs), &num_fbc)
-   
+
 	if fbc == nil {
 		log.error("Failed choosing GLX framebuffer config")
 		return false
@@ -73,7 +73,7 @@ linux_gl_x11_glue_make_context :: proc(s: ^Linux_GL_X11_Glue_State, options: Ini
 
 	glxCreateContextAttribsARB: glx.CreateContextAttribsARBProc
 	glx.SetProcAddress((rawptr)(&glxCreateContextAttribsARB), "glXCreateContextAttribsARB")
-	
+
 	if glxCreateContextAttribsARB == {} {
 		log.error("Failed fetching glXCreateContextAttribsARB")
 		return false

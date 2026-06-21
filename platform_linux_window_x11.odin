@@ -62,6 +62,8 @@ x11_init :: proc(
 		0,
 	)
 
+  X.SetWindowBackgroundPixmap(s.display, s.window, X.None)
+
 	X.StoreName(s.display, s.window, frame_cstring(window_title))
 
 	X.SelectInput(s.display, s.window, {
