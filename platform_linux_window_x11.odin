@@ -11,6 +11,7 @@ LINUX_WINDOW_X11 :: Linux_Window_Interface {
 	get_window_render_glue = x11_get_window_render_glue,
 	get_events = x11_get_events,
 	set_title = x11_set_title,
+	set_icon = x11_set_icon,
 	get_screen_width = x11_get_screen_width,
 	get_screen_height = x11_get_screen_height,
 	set_position = x11_set_position,
@@ -62,7 +63,7 @@ x11_init :: proc(
 	)
 
 	X.StoreName(s.display, s.window, frame_cstring(window_title))
-	
+
 	X.SelectInput(s.display, s.window, {
 		.KeyPress,
 		.KeyRelease,
@@ -101,7 +102,7 @@ x11_init :: proc(
 		s.blank_cursor = binding(s.display, blank_pixmap, blank_pixmap, &black, &black, 0, 0)
 		X.FreePixmap(s.display, blank_pixmap)
 	}
-	
+
 	when RENDER_BACKEND_NAME == "gl" {
 		s.window_render_glue = make_linux_gl_x11_glue(s.display, s.window, s.allocator)
 	} else when RENDER_BACKEND_NAME == "nil" {
@@ -241,6 +242,37 @@ x11_set_title :: proc(title: string) {
 	X.StoreName(s.display, s.window, frame_cstring(title))
 }
 
+x11_set_icon :: proc(icon: Image) {
+  size := icon.width * icon.height
+  data := make([]u64, 2 + size)
+  defer delete(data)
+
+  data[0] = u64(icon.width)
+  data[1] = u64(icon.height)
+
+  for p, i in icon.pixels {
+    data[i+2] =
+      (u64(p.a) << 24) |
+      (u64(p.r) << 16) |
+      (u64(p.g) <<  8) |
+      (u64(p.b))
+  }
+
+  net_wm_icon := X.InternAtom(s.display, "_NET_WM_ICON", false)
+  cardinal := X.InternAtom(s.display, "CARDINAL", false)
+
+  X.ChangeProperty(
+    s.display,
+    s.window,
+    net_wm_icon,
+    cardinal,
+    32,
+    X.PropModeReplace,
+    ([^]u8)(&data[0]),
+    i32(len(data)),
+  )
+}
+
 x11_get_screen_width :: proc() -> int {
 	return s.screen_width
 }
@@ -344,7 +376,7 @@ x11_set_window_mode :: proc(window_mode: Window_Mode) {
 
 		X.SetWMNormalHints(s.display, s.window, &hints)
 
-	case .Windowed_Resizable: 
+	case .Windowed_Resizable:
 		if old_window_mode == .Borderless_Fullscreen {
 			leave_borderless_fullscreen()
 		}
@@ -371,7 +403,7 @@ x11_set_cursor_hidden :: proc(hidden: bool) {
 }
 
 x11_is_cursor_hidden :: proc() -> bool {
-	return s.cursor_hidden	
+	return s.cursor_hidden
 }
 
 x11_set_cursor_locked :: proc(locked: bool) {
@@ -419,15 +451,15 @@ x11_set_internal_state :: proc(state: rawptr) {
 
 X11_State :: struct {
 	allocator: runtime.Allocator,
-	
+
 	screen_width: int,
 	screen_height: int,
-	
+
 	last_configure_width: int,
 	last_configure_height: int,
 	last_configure_windowed_width: int,
 	last_configure_windowed_height: int,
-	
+
 	display: ^X.Display,
 	window: X.Window,
 	delete_msg: X.Atom,
@@ -440,4 +472,3 @@ X11_State :: struct {
 }
 
 s: ^X11_State
-

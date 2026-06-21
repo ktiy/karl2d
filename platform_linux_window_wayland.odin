@@ -9,6 +9,7 @@ LINUX_WINDOW_WAYLAND :: Linux_Window_Interface {
 	get_window_render_glue = wl_get_window_render_glue,
 	get_events = wl_get_events,
 	set_title = wl_set_title,
+	set_icon = wl_set_icon,
 	get_screen_width = wl_get_screen_width,
 	get_screen_height = wl_get_screen_height,
 	set_position = wl_set_position,
@@ -64,7 +65,7 @@ wl_init :: proc(
 
 	s.surface = wl.compositor_create_surface(s.compositor)
 	log.ensure(s.surface != nil, "Error creating Wayland surface")
-	
+
 	// Makes sure the window does "pings" that keeps it alive.
 	wl.add_listener(s.xdg_base, &wm_base_listener, nil)
 	xdg_surface := wl.xdg_wm_base_get_xdg_surface(s.xdg_base, s.surface)
@@ -354,7 +355,7 @@ key_handler :: proc "c" (
 ) {
 	context = runtime.default_context()
 
-	// Wayland emits evdev events, and the keycodes are shifted 
+	// Wayland emits evdev events, and the keycodes are shifted
 	// from the expected xkb events... Just add 8 to it.
 	keycode := key + 8
 
@@ -367,7 +368,7 @@ key_handler :: proc "c" (
 				key = key,
 			})
 		}
-		
+
 	case wl.KEYBOARD_KEY_STATE_PRESSED:
 		key := key_from_xkeycode(keycode)
 
@@ -409,11 +410,11 @@ pointer_listener := wl.Pointer_Listener {
 	) {
 		context = s.odin_ctx
 
-		// surface_x and surface_y are fixed point 24.8 variables. 
-		// Just bitshift them to remove the decimal part and obtain 
+		// surface_x and surface_y are fixed point 24.8 variables.
+		// Just bitshift them to remove the decimal part and obtain
 		// a screen coordinate
 		append(&s.events, Event_Mouse_Move {
-			position = { math.floor(f32(surface_x >> 8) * s.scale), math.floor(f32(surface_y >> 8) * s.scale) }, 
+			position = { math.floor(f32(surface_x >> 8) * s.scale), math.floor(f32(surface_y >> 8) * s.scale) },
 		})
 	},
 	button = proc "c" (
@@ -432,13 +433,13 @@ pointer_listener := wl.Pointer_Listener {
 		case wl.POINTER_BTN_MIDDLE: btn = .Middle
 		case wl.POINTER_BTN_RIGHT: btn = .Right
 		}
-	
+
 		switch state {
 		case wl.POINTER_BUTTON_STATE_RELEASED:
 			append(&s.events, Event_Mouse_Button_Went_Up {
 				button = btn,
 			})
-		case wl.POINTER_BUTTON_STATE_PRESSED: 
+		case wl.POINTER_BUTTON_STATE_PRESSED:
 			append(&s.events, Event_Mouse_Button_Went_Down {
 				button = btn,
 			})
@@ -456,7 +457,7 @@ pointer_listener := wl.Pointer_Listener {
 		// Vertical scroll
 		if axis == 0 {
 			event_direction: f32 = value > 0 ? -1 : 1
-			
+
 			append(&s.events, Event_Mouse_Wheel {
 				delta = event_direction,
 			})
@@ -533,6 +534,10 @@ wl_set_title :: proc(title: string) {
 	wl.xdg_toplevel_set_title(s.toplevel, strings.clone_to_cstring(title, frame_allocator))
 }
 
+wl_set_icon :: proc(icon: Image) {
+  return
+}
+
 wl_get_screen_width :: proc() -> int {
 	return s.screen_width
 }
@@ -561,7 +566,7 @@ wl_get_window_scale :: proc() -> f32 {
 
 wl_set_window_mode :: proc(window_mode: Window_Mode) {
 	s.window_mode = window_mode
-	 
+
 	switch window_mode {
 	case .Windowed:
 		wl.xdg_toplevel_unset_fullscreen(s.toplevel)
@@ -674,7 +679,7 @@ apply_cursor_visibility :: proc() {
 		if cursor != nil && cursor.image_count > 0 {
 			image := cursor.images[0]
 			buf := wl.cursor_image_get_buffer(image)
-			
+
 			wl.pointer_set_cursor(
 				s.pointer,
 				s.pointer_enter_serial,
@@ -711,7 +716,7 @@ WL_State :: struct {
 	window_mode: Window_Mode,
 
 	odin_ctx: runtime.Context,
-	
+
 	display: ^wl.Display,
 	surface: ^wl.Surface,
 	compositor: ^wl.Compositor,
@@ -746,4 +751,3 @@ WL_State :: struct {
 }
 
 s: ^WL_State
-

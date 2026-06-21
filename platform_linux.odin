@@ -23,6 +23,7 @@ PLATFORM_LINUX :: Platform_Interface {
 	get_window_render_glue = linux_get_window_render_glue,
 	get_events = linux_get_events,
 	set_window_title = linux_set_window_title,
+	set_window_icon = linux_set_window_icon,
 	set_screen_size = set_screen_size,
 	get_screen_width = linux_get_screen_width,
 	get_screen_height = linux_get_screen_height,
@@ -58,7 +59,7 @@ linux_init :: proc(
 	s = (^Linux_State)(platform_state)
 	s.allocator = allocator
 	xdg_session_type := os.get_env("XDG_SESSION_TYPE", frame_allocator)
-	
+
 	if xdg_session_type == "wayland" {
 		s.win = LINUX_WINDOW_WAYLAND
 	} else {
@@ -170,6 +171,10 @@ linux_set_window_title :: proc(title: string) {
 	s.win.set_title(title)
 }
 
+linux_set_window_icon :: proc(icon: Image) {
+  s.win.set_icon(icon)
+}
+
 linux_set_window_position :: proc(x: int, y: int) {
 	s.win.set_position(x, y)
 }
@@ -184,10 +189,10 @@ linux_get_window_scale :: proc() -> f32 {
 
 linux_create_connected_gamepads :: proc() {
 	// Gamepads are described by device files at path `/dev/input/eventXX`
-	devices_handle, devices_handle_ok := os.open("/dev/input") 
+	devices_handle, devices_handle_ok := os.open("/dev/input")
 
 	if devices_handle_ok != nil {
-		return 
+		return
 	}
 
 	defer os.close(devices_handle)
@@ -195,7 +200,7 @@ linux_create_connected_gamepads :: proc() {
 	file_infos, file_infos_ok := os.read_dir(devices_handle, -1, frame_allocator)
 
 	if file_infos_ok != nil {
-		return 
+		return
 	}
 
 	gamepad_idx := 0
@@ -211,7 +216,7 @@ linux_create_connected_gamepads :: proc() {
 
 		if gamepad_idx >= MAX_GAMEPADS {
 			log.errorf("A maximum of %v gamepads is supported", MAX_GAMEPADS)
-			break					
+			break
 		}
 
 		if gamepad, gamepad_ok := linux_create_gamepad(fi.fullpath); gamepad_ok {
@@ -231,7 +236,7 @@ linux_create_gamepad :: proc(device_path: string) -> (Linux_Gamepad, bool) {
 
 	name_buf: [256]u8
 	name_len := linux.ioctl(linux.Fd(os.fd(fd)), evdev.EVIOCGNAME(size_of(name_buf)), cast(uintptr)&name_buf)
-	name := name_len > 0 ? string(name_buf[:name_len-1]) : "" 
+	name := name_len > 0 ? string(name_buf[:name_len-1]) : ""
 	type := Linux_Gamepad_Type.Other
 
 	if strings.contains(name, "Microsoft") {
@@ -258,7 +263,7 @@ linux_create_gamepad :: proc(device_path: string) -> (Linux_Gamepad, bool) {
 	log.debugf("\thas_analogue_axes-> '%t'", has_analogue_axes)
 	log.debugf("\thas_vibration-> '%t'", has_vibration)
 	log.debugf("\thas_relative_movement-> '%t'", evdev.test_bit(ev_bits[:], evdev.EV_REL))
-	
+
 	if has_analogue_axes {
 		abs_bits: [evdev.EV_ABS / (8 * size_of(u64)) + 1]u64 = {}
 		linux.ioctl(linux.Fd(os.fd(fd))	, evdev.EVIOCGBIT(evdev.EV_ABS, size_of(abs_bits)), cast(uintptr)&abs_bits)
@@ -282,11 +287,11 @@ linux_create_gamepad :: proc(device_path: string) -> (Linux_Gamepad, bool) {
 			}
 		}
 	}
-	
+
 	if has_vibration {
-		ff_bits: [evdev.FF_MAX / (8 * size_of(u64)) + 1]u64 
+		ff_bits: [evdev.FF_MAX / (8 * size_of(u64)) + 1]u64
 		linux.ioctl(linux.Fd(os.fd(fd)), evdev.EVIOCGBIT(evdev.EV_FF, size_of(ff_bits)), cast(uintptr)&ff_bits)
-		has_rumble_effect := evdev.test_bit(ff_bits[:], u64(evdev.FF_Effect_Type.RUMBLE)) 
+		has_rumble_effect := evdev.test_bit(ff_bits[:], u64(evdev.FF_Effect_Type.RUMBLE))
 
 		if has_rumble_effect {
 			effect := evdev.ff_effect {
@@ -435,7 +440,7 @@ linux_get_gamepad_events :: proc(events: ^[dynamic]Event) {
 						// Do nothing
 					}
 				}
-			case evdev.EV_ABS: 
+			case evdev.EV_ABS:
 				evdev_axis := evdev.Axis(event.code)
 
 				if evdev_axis == .Z || evdev_axis == .RZ {
@@ -448,7 +453,7 @@ linux_get_gamepad_events :: proc(events: ^[dynamic]Event) {
 						prev_value := gp.axes[axis].value
 						TRIGGER_THRESHOLD :: 0.001
 						button: Gamepad_Button = evdev_axis == .Z ? .Left_Trigger : .Right_Trigger
-						
+
 						if prev_value > TRIGGER_THRESHOLD && value <= TRIGGER_THRESHOLD {
 							append(events, Event_Gamepad_Button_Went_Up {
 								gamepad = idx,
@@ -479,7 +484,7 @@ linux_get_gamepad_events :: proc(events: ^[dynamic]Event) {
 					}
 
 					gp.previous_dpad_horizontal = event.value
-				} else if evdev_axis == .HAT0Y { 
+				} else if evdev_axis == .HAT0Y {
 					// ^ DPAD vertical. It's an axis, but the event values are just 0, -1 or 1
 
 					if gp.previous_dpad_vertical != 0 && gp.previous_dpad_vertical != event.value {
@@ -555,7 +560,7 @@ linux_set_gamepad_vibration :: proc(gamepad: Gamepad_Index, left: f32, right: f3
 	}
 
 	linux.ioctl(linux.Fd(os.fd(gp.fd)), evdev.EVIOCSFF(), cast(uintptr)&effect)
-	
+
 	rumble_event := evdev.input_event {
 		type  = evdev.EV_FF,
 		code  = u16(gp.rumble_effect_id),
@@ -649,6 +654,7 @@ Linux_Window_Interface :: struct #all_or_none {
 	get_window_render_glue: proc() -> Window_Render_Glue,
 	get_events: proc(events: ^[dynamic]Event),
 	set_title: proc(title: string),
+	set_icon: proc(icon: Image),
 	set_position: proc(x: int, y: int),
 	set_screen_size: proc(w, h: int),
 	get_screen_width: proc() -> int,

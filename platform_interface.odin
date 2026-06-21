@@ -18,6 +18,7 @@ Platform_Interface :: struct #all_or_none {
 	get_window_render_glue: proc() -> Window_Render_Glue,
 	get_events: proc(events: ^[dynamic]Event),
 	set_window_title: proc(title: string),
+	set_window_icon: proc(icon: Image),
 	set_window_position: proc(x: int, y: int),
 	set_screen_size: proc(w, h: int),
 	get_screen_width: proc() -> int,
