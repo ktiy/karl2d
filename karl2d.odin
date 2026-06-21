@@ -138,9 +138,6 @@ init :: proc(
 	// Dummy element so font with index 0 means 'no font'.
 	append_nothing(&s.fonts)
 
-	default_font := load_dynamic_font_from_bytes(DEFAULT_FONT_DATA)
-	log.assertf(default_font == FONT_DEFAULT, "Default font must be at index %i", FONT_DEFAULT)
-	_set_font(FONT_DEFAULT)
 
 	// Audio
 	{
@@ -219,7 +216,6 @@ shutdown :: proc() {
 	}
 
 	delete(s.events)
-	destroy_font(FONT_DEFAULT)
 	rb.destroy_texture(s.shape_drawing_texture)
 	destroy_shader(s.default_shader)
 	rb.shutdown()
@@ -4527,7 +4523,6 @@ Handle :: hm.Handle64
 Texture_Handle :: distinct Handle
 Render_Target_Handle :: distinct Handle
 Font :: distinct int
-DEFAULT_FONT_DATA :: #load("default_fonts/roboto.ttf")
 
 Font_Baked_Glyph_Range :: struct {
 	start_idx: int,
@@ -4546,8 +4541,6 @@ Font_Baked_Glyph :: struct {
 
 FONT_NONE :: Font(0)
 
-// The default font. It's a font called "roboto". It is loaded from `DEFAULT_FONT_DATA` on Karl2D is
-// initialized.
 FONT_DEFAULT :: Font(1)
 
 TEXTURE_NONE :: Texture_Handle {}

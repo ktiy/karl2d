@@ -35,7 +35,7 @@ init :: proc(
 // frame times are up-to-date.
 //
 // Returns a bool that says if the player has attempted to close the window. It's up to the
-// application to decide if it wants to shut down or if it (for example) wants to show a 
+// application to decide if it wants to shut down or if it (for example) wants to show a
 // confirmation dialogue.
 //
 // Commonly used for creating the "main loop" of a game: `for k2.update() {}`
@@ -48,10 +48,10 @@ init :: proc(
 ////     k2.calculate_frame_time()
 ////     k2.process_events()
 ////     k2.update_audio_mixer()
-////     
+////
 ////     k2.clear(k2.BLUE)
 ////     k2.present()
-////     
+////
 ////     if k2.close_window_requested() {
 ////         break
 ////     }
@@ -103,7 +103,7 @@ present :: proc()
 // Called by `update`, but can be called manually if you need more control.
 process_events :: proc()
 
-// Fetch a list of all events that happened this frame. Most games can use the `key_is_held`, 
+// Fetch a list of all events that happened this frame. Most games can use the `key_is_held`,
 // `mouse_button_went_down` etc procedures to check input state. But if you want a list of events
 // instead, then you can use this. These events will also include things like "Window Focus" events
 // and "Window Resize" events.
@@ -161,7 +161,7 @@ set_window_mode :: proc(window_mode: Window_Mode)
 // Flushes the current batch. This sends off everything to the GPU that has been queued in the
 // current batch. Normally, you do not need to do this manually. It is done automatically when these
 // procedures run:
-// 
+//
 // - present
 // - set_camera
 // - set_shader
@@ -172,7 +172,7 @@ set_window_mode :: proc(window_mode: Window_Mode)
 // - clear
 // - draw_texture_* IF previous draw did not use the same texture (1)
 // - draw_rect_*, draw_circle_*, draw_line IF previous draw did not use the shapes drawing texture (2)
-// 
+//
 // (1) When drawing textures, the current texture is fed into the active shader. Everything within
 //     the same batch must use the same texture. So drawing with a new texture forces the current to
 //     be drawn. You can combine several textures into an atlas to get bigger batches.
@@ -352,7 +352,7 @@ draw_triangle :: proc(vertices: [3]Vec2, c: Color)
 // - tint: A color to apply to the texture, in a multiplicative way. WHITE means no tinting.
 //
 // If you want to rotate around the middle of the texture, then try this:
-// 
+//
 //// middle := k2.rect_middle(k2.get_texture_rect(tex))
 //// draw_texture(tex, pos + middle, middle, rot)
 draw_texture :: proc(
@@ -513,7 +513,7 @@ set_sound_loop :: proc(sound: Sound, loop: bool)
 // one or more calls to `create_sound_from_audio_buffer`.
 //
 // Sounds created using this procedure owns their internal audio buffer: Calling `destroy_sound`
-// will also destroy the audio buffer. 
+// will also destroy the audio buffer.
 //
 // Currently only supports 16 bit WAV files.
 load_sound_from_file :: proc(filename: string) -> Sound
@@ -624,7 +624,7 @@ load_audio_stream_from_file :: proc(filename: string) -> Audio_Stream
 // Note that this procedure wants the encoded file, for example an ogg file just like it was on
 // disk. For normal sounds there is a `load_sound_from_bytes_raw` procedure where you just send in
 // the samples. There is no such procedure for audio streams since the whole idea is to stream an
-// encoded file into memory without having to decode the whole thing first.  
+// encoded file into memory without having to decode the whole thing first.
 load_audio_stream_from_bytes :: proc(bytes: []u8) -> Audio_Stream
 
 // Destroy an audio stream previously loaded using `load_audio_stream_from_file` or
@@ -635,7 +635,7 @@ load_audio_stream_from_bytes :: proc(bytes: []u8) -> Audio_Stream
 destroy_audio_stream :: proc(stream: Audio_Stream)
 
 // Streams in new audio data from the audio stream. You need to call this once per frame in order
-// for the streaming to actually happen. 
+// for the streaming to actually happen.
 update_audio_stream :: proc(stream: Audio_Stream)
 
 // Start playing an audio stream. Don't forget to call `update_audio_stream` every frame in order to
@@ -1201,7 +1201,7 @@ Shader_Input :: struct {
 
 Pixel_Format :: enum {
 	Unknown,
-	
+
 	RGBA_32_Float,
 	RGB_32_Float,
 	RG_32_Float,
@@ -1257,7 +1257,6 @@ Handle :: hm.Handle64
 Texture_Handle :: distinct Handle
 Render_Target_Handle :: distinct Handle
 Font :: distinct int
-DEFAULT_FONT_DATA :: #load("default_fonts/roboto.ttf")
 
 Font_Baked_Glyph_Range :: struct {
 	start_idx: int,
@@ -1348,12 +1347,12 @@ VORBIS_STATE_SIZE :: 300 * mem.Kilobyte
 
 Audio_Stream_Data :: struct {
 	handle: Audio_Stream,
-	
+
 	vorbis: ^stbv.vorbis,
 	vorbis_buffer: stbv.vorbis_alloc,
 	playing_buffer_handle: Playing_Audio_Buffer_Handle,
 	buffer: Audio_Buffer,
-	
+
 	// Where in the audio buffer referred to by `buffer_handle` that we have most recently written
 	// samples. Together with the `offset` of the Playing_Audio_Buffer, this forms a circular
 	// buffer.
@@ -1452,7 +1451,7 @@ State :: struct {
 	render_backend_state: rawptr,
 
 	fs: fs.FontContext,
-	
+
 	close_window_requested: bool,
 
 	// All events for this frame. Cleared when `process_events` run
@@ -1667,7 +1666,7 @@ Gamepad_Index :: int
 
 Gamepad_Axis :: enum {
 	None,
-	
+
 	Left_Stick_X,
 	Left_Stick_Y,
 	Right_Stick_X,
@@ -1678,7 +1677,7 @@ Gamepad_Axis :: enum {
 
 Gamepad_Button :: enum {
 	None,
-	
+
 	// DPAD buttons
 	Left_Face_Up,
 	Left_Face_Down,
