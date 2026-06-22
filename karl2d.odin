@@ -3,6 +3,7 @@
 package karl2d
 
 import "base:runtime"
+import "base:intrinsics"
 import "core:mem"
 import "log"
 import "core:math"
@@ -757,11 +758,13 @@ draw_rect :: proc(rect: Rect, color: Color, origin: Vec2 = {}, rotation: f32 = 0
 		draw_current_batch()
 	}
 
-	if s.batch_texture != s.shape_drawing_texture {
+  texture, uv := _shape_texture()
+
+  if s.batch_texture != texture.handle {
 		draw_current_batch()
 	}
 
-	s.batch_texture = s.shape_drawing_texture
+	s.batch_texture = texture.handle
 	tl, tr, bl, br: Vec2
 
 	// Rotation adapted from Raylib's "DrawTexturePro"
@@ -801,12 +804,12 @@ draw_rect :: proc(rect: Rect, color: Color, origin: Vec2 = {}, rotation: f32 = 0
 		}
 	}
 
-	batch_vertex(tl, {0, 0}, color)
-	batch_vertex(tr, {1, 0}, color)
-	batch_vertex(br, {1, 1}, color)
-	batch_vertex(tl, {0, 0}, color)
-	batch_vertex(br, {1, 1}, color)
-	batch_vertex(bl, {0, 1}, color)
+	batch_vertex(tl, uv, color)
+	batch_vertex(tr, uv, color)
+	batch_vertex(br, uv, color)
+	batch_vertex(tl, uv, color)
+	batch_vertex(br, uv, color)
+	batch_vertex(bl, uv, color)
 }
 
 // Creates a rectangle from a position and a size and draws it using the specified color.
@@ -879,11 +882,13 @@ draw_circle :: proc(center: Vec2, radius: f32, color: Color, segments := 16) {
 		draw_current_batch()
 	}
 
-	if s.batch_texture != s.shape_drawing_texture {
+  texture, uv := _shape_texture()
+
+	if s.batch_texture != texture.handle {
 		draw_current_batch()
 	}
 
-	s.batch_texture = s.shape_drawing_texture
+	s.batch_texture = texture.handle
 
 	prev := center + {radius, 0}
 	for s in 1..=segments {
@@ -891,9 +896,9 @@ draw_circle :: proc(center: Vec2, radius: f32, color: Color, segments := 16) {
 		rot := linalg.matrix2_rotate(sr)
 		p := center + rot * Vec2{radius, 0}
 
-		batch_vertex(prev, {0, 0}, color)
-		batch_vertex(p, {1, 0}, color)
-		batch_vertex(center, {1, 1}, color)
+		batch_vertex(prev, uv, color)
+		batch_vertex(p, uv, color)
+		batch_vertex(center, uv, color)
 
 		prev = p
 	}
@@ -931,15 +936,17 @@ draw_triangle :: proc(vertices: [3]Vec2, c: Color) {
 		draw_current_batch()
 	}
 
-	if s.batch_texture != s.shape_drawing_texture {
+  texture, uv := _shape_texture()
+
+	if s.batch_texture != texture.handle {
 		draw_current_batch()
 	}
 
-	s.batch_texture = s.shape_drawing_texture
+	s.batch_texture = texture.handle
 
-	batch_vertex(vertices[0], {0, 0}, c)
-	batch_vertex(vertices[1], {1, 1}, c)
-	batch_vertex(vertices[2], {0, 1}, c)
+	batch_vertex(vertices[0], uv, c)
+	batch_vertex(vertices[1], uv, c)
+	batch_vertex(vertices[2], uv, c)
 }
 
 // Draw a texture at a position. The top-left corner of the texture will end up at the position.
@@ -1033,11 +1040,11 @@ draw_texture_fit :: proc(
 	}
 
 	if s.vertex_buffer_cpu_used + s.batch_shader.vertex_size * 6 > len(s.vertex_buffer_cpu) {
-		draw_current_batch()
+    draw_current_batch()
 	}
 
 	if s.batch_texture != texture.handle {
-		draw_current_batch()
+    draw_current_batch()
 	}
 
 	s.batch_texture = texture.handle
@@ -1061,7 +1068,7 @@ draw_texture_fit :: proc(
 	//
 	// Could we do something with the projection matrix while drawing into those render textures
 	// instead? I tried that, but couldn't get it to work.
-	if rb.texture_needs_vertical_flip(texture.handle) {
+	if _texture_needs_vertical_flip(texture.handle) {
 		flip_y = !flip_y
 
 		if source.h != f32(texture.height) {
@@ -1083,9 +1090,9 @@ draw_texture_fit :: proc(
 	if rotation == 0 {
 		x := dest.x - origin.x
 		y := dest.y - origin.y
-		tl = { x,         y }
+		tl = { x,          y }
 		tr = { x + dest.w, y }
-		bl = { x,         y + dest.h }
+		bl = { x,          y + dest.h }
 		br = { x + dest.w, y + dest.h }
 	} else {
 		sin_rot := math.sin(rotation)
@@ -1126,16 +1133,12 @@ draw_texture_fit :: proc(
 	uv0 := up
 	uv1 := up + {us.x, 0}
 	uv2 := up + us
-	uv3 := up
-	uv4 := up + us
 	uv5 := up + {0, us.y}
 
 	if flip_x {
 		uv0.x += us.x
 		uv1.x -= us.x
 		uv2.x -= us.x
-		uv3.x += us.x
-		uv4.x -= us.x
 		uv5.x += us.x
 	}
 
@@ -1143,16 +1146,14 @@ draw_texture_fit :: proc(
 		uv0.y += us.y
 		uv1.y += us.y
 		uv2.y -= us.y
-		uv3.y += us.y
-		uv4.y -= us.y
 		uv5.y -= us.y
 	}
 
 	batch_vertex(tl, uv0, c)
 	batch_vertex(tr, uv1, c)
 	batch_vertex(br, uv2, c)
-	batch_vertex(tl, uv3, c)
-	batch_vertex(br, uv4, c)
+	batch_vertex(tl, uv0, c)
+	batch_vertex(br, uv2, c)
 	batch_vertex(bl, uv5, c)
 }
 
@@ -1464,6 +1465,11 @@ draw_text :: proc(
 
 		_set_font(font)
 		font_object := &s.fonts[font]
+    atlas := font_object.atlas
+
+    if atlas.handle == TEXTURE_NONE || atlas.width == 0 || atlas.height == 0 {
+      return
+    }
 
 		camera_zoom: f32 = 1
 
@@ -1475,6 +1481,17 @@ draw_text :: proc(
 		// We then divide quad positions back by camera_zoom to recover world-space coordinates.
 		render_size := font_size * camera_zoom
 		scaled_pos  := position * camera_zoom
+
+    if s.batch_texture != atlas.handle {
+      draw_current_batch()
+    }
+    s.batch_texture = atlas.handle
+
+    // Worst case in utf8 is 1 quad per byte
+    need := s.batch_shader.vertex_size * 6 * len(text)
+    if s.vertex_buffer_cpu_used + need > len(s.vertex_buffer_cpu) {
+      draw_current_batch()
+    }
 
 		fs.SetSize(&s.fs, render_size)
 		iter := fs.TextIterInit(&s.fs, scaled_pos.x, scaled_pos.y, text)
@@ -1516,7 +1533,7 @@ draw_text :: proc(
 			}
 
 			char_origin := origin + {position.x - qx0, position.y - qy0}
-			draw_texture_fit(font_object.atlas, src, dst, char_origin, rotation, color)
+			draw_texture_fit(atlas, src, dst, char_origin, rotation, color)
 		}
 	}
 
@@ -3888,7 +3905,13 @@ load_shader_from_bytes :: proc(
 	}
 
 	shd.vertex_size = input_offset
-	return shd
+  shd.vertex_template = make([]u8, shd.vertex_size, s.allocator)
+  shd.vertex_template_dirty = new(bool, s.allocator)
+  shd.vertex_template_dirty^ = true
+  shd.has_overrides = new(bool, s.allocator)
+  shd.has_overrides^ = false
+
+  return shd
 }
 
 // Destroy a shader previously loaded using `load_shader_from_file` or `load_shader_from_bytes`
@@ -3917,6 +3940,9 @@ destroy_shader :: proc(shader: Shader) {
 	}
 	delete(shader.inputs, a)
 	delete(shader.input_overrides, a)
+  delete(shader.vertex_template, a)
+  free(shader.vertex_template_dirty, a)
+  free(shader.has_overrides, a)
 }
 
 // Fetches the shader that Karl2D uses by default.
@@ -3997,6 +4023,14 @@ override_shader_input :: proc(shader: Shader, input: int, val: any) {
 	}
 
 	o.used = sz
+
+  if shader.vertex_template_dirty != nil {
+    shader.vertex_template_dirty^ = true
+  }
+
+  if sz > 0 && shader.has_overrides != nil {
+    shader.has_overrides^ = true
+  }
 }
 
 // Returns the number of bytes that a pixel in a texture uses.
@@ -4431,6 +4465,9 @@ Shader :: struct {
 
 	// How many bytes a vertex uses gives the input of the shader.
 	vertex_size: int,
+  vertex_template: []u8,
+  vertex_template_dirty: ^bool,
+  has_overrides: ^bool,
 }
 
 SHADER_INPUT_VALUE_MAX_SIZE :: 256
@@ -4747,6 +4784,9 @@ State :: struct {
 	batch_texture: Texture_Handle,
 	batch_render_target: Render_Target_Handle,
 	batch_blend_mode: Blend_Mode,
+
+  flip_check_handle: Texture_Handle,
+  flip_check_result: bool,
 
 	view_matrix: Mat4,
 	proj_matrix: Mat4,
@@ -5065,7 +5105,14 @@ batch_vertex :: proc(v: Vec2, uv: Vec2, color: Color) {
 	uv_offset := shd.default_input_offsets[.UV]
 	color_offset := shd.default_input_offsets[.Color]
 
-	mem.set(&s.vertex_buffer_cpu[base_offset], 0, shd.vertex_size)
+  if shd.has_overrides != nil && shd.has_overrides^ {
+    if shd.vertex_template_dirty != nil && shd.vertex_template_dirty^ {
+      batch_vertex_copy(shd, base_offset)
+    }
+    intrinsics.mem_copy(&s.vertex_buffer_cpu[base_offset], raw_data(shd.vertex_template), shd.vertex_size)
+  } else {
+    intrinsics.mem_zero(&s.vertex_buffer_cpu[base_offset], shd.vertex_size)
+  }
 
 	if pos_offset != -1 {
 		(^Vec2)(&s.vertex_buffer_cpu[base_offset + pos_offset])^ = v
@@ -5079,19 +5126,21 @@ batch_vertex :: proc(v: Vec2, uv: Vec2, color: Color) {
 		(^Color)(&s.vertex_buffer_cpu[base_offset + color_offset])^ = color
 	}
 
-	override_offset: int
-	for &input in shd.inputs {
-		o := &shd.input_overrides[input.register]
-		sz := pixel_format_size(input.format)
-
-		if o.used != 0 {
-			mem.copy(&s.vertex_buffer_cpu[base_offset + override_offset], raw_data(&o.val), o.used)
-		}
-
-		override_offset += sz
-	}
-
 	s.vertex_buffer_cpu_used += shd.vertex_size
+}
+
+batch_vertex_copy :: proc(shd: Shader, base_offset: int) {
+  intrinsics.mem_zero(&s.vertex_buffer_cpu[base_offset], shd.vertex_size)
+  override_offset: int
+  for &input in shd.inputs {
+    o := &shd.input_overrides[input.register]
+    sz := pixel_format_size(input.format)
+
+    intrinsics.mem_copy(&shd.vertex_template[override_offset], raw_data(&o.val), o.used)
+
+    override_offset += sz
+  }
+  shd.vertex_template_dirty^ = false
 }
 
 VERTEX_BUFFER_MAX :: 1000000
@@ -5242,6 +5291,31 @@ _update_font :: proc(fh: Font) {
 
 		rb.update_texture(font.atlas.handle, slice.reinterpret([]u8, expanded_pixels), r)
 	}
+}
+
+SHAPE_ATLAS_WHITE_RECT_SIZE :: 2
+
+_shape_texture :: proc() -> (texture: Texture, uv: Vec2) {
+  if s.batch_font != FONT_NONE && int(s.batch_font) < len(s.fonts) {
+    font_object := &s.fonts[s.batch_font]
+
+    if font_object.type == .Dynamic && font_object.atlas.handle != TEXTURE_NONE {
+      half := f32(SHAPE_ATLAS_WHITE_RECT_SIZE) * 0.5
+      atlas_uv := Vec2{half, half} / Vec2{f32(font_object.atlas.width), f32(font_object.atlas.height)}
+      return font_object.atlas, atlas_uv
+    }
+  }
+
+  return Texture{handle = s.shape_drawing_texture, width = 16, height = 16}, {0.5, 0.5}
+}
+
+_texture_needs_vertical_flip :: proc(handle: Texture_Handle) -> bool {
+  if handle != s.flip_check_handle {
+    s.flip_check_handle = handle
+    s.flip_check_result = rb.texture_needs_vertical_flip(handle)
+  }
+
+  return s.flip_check_result
 }
 
 // Not for direct use. Specify font to `draw_text_ex`
